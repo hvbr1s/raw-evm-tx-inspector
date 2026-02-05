@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
-"""
-Decode an EIP-1559 (Type 2) raw Ethereum transaction.
-Zero external dependencies — uses a manual RLP decoder.
-
-Usage:
-    python decode_tx.py <raw_tx_hex>
-    python decode_tx.py <raw_tx_hex> -o output.txt
-    python decode_tx.py   # prompts for input
-"""
-
 import sys
 
 
-# --------------- RLP Decoder ---------------
-
 def decode_rlp(data: bytes, pos: int = 0):
-    """Decode one RLP item. Returns (decoded_value, next_position)."""
     b = data[pos]
-    if b < 0x80:  # single byte
+    if b < 0x80:
         return bytes([b]), pos + 1
-    elif b <= 0xB7:  # short string (0-55 bytes)
+    elif b <= 0xB7:
         length = b - 0x80
         return data[pos + 1 : pos + 1 + length], pos + 1 + length
-    elif b <= 0xBF:  # long string (>55 bytes)
+    elif b <= 0xBF:
         len_of_len = b - 0xB7
         length = int.from_bytes(data[pos + 1 : pos + 1 + len_of_len], "big")
         start = pos + 1 + len_of_len
         return data[start : start + length], start + length
-    elif b <= 0xF7:  # short list
+    elif b <= 0xF7:
         length = b - 0xC0
         return _decode_list(data, pos + 1, pos + 1 + length), pos + 1 + length
-    else:  # long list
+    else:
         len_of_len = b - 0xF7
         length = int.from_bytes(data[pos + 1 : pos + 1 + len_of_len], "big")
         start = pos + 1 + len_of_len
@@ -46,8 +33,6 @@ def _decode_list(data: bytes, start: int, end: int) -> list:
     return items
 
 
-# --------------- Helpers ---------------
-
 def to_int(b: bytes) -> int:
     return int.from_bytes(b, "big") if b else 0
 
@@ -60,10 +45,7 @@ def wei_to_eth(wei: int) -> float:
     return wei / 1e18
 
 
-# --------------- Main Decoder ---------------
-
 def decode_type2_tx(raw_hex: str) -> dict:
-    """Decode a Type 2 (EIP-1559) raw transaction."""
     h = raw_hex.strip()
     if h.startswith(("0x", "0X")):
         h = h[2:]
@@ -73,16 +55,11 @@ def decode_type2_tx(raw_hex: str) -> dict:
     if raw[0] != 0x02:
         raise ValueError(f"Not a Type 2 tx (got prefix 0x{raw[0]:02x})")
 
-    # Decode RLP payload after the type byte.
-    # Some copy-pasted txs are off by a byte; pad to be safe.
     try:
         fields, _ = decode_rlp(raw, 1)
     except (IndexError, KeyError):
         fields, _ = decode_rlp(raw + b"\x00", 1)
 
-    # EIP-1559 field order:
-    # chainId, nonce, maxPriorityFeePerGas, maxFeePerGas,
-    # gasLimit, to, value, data, accessList, v, r, s
     return {
         "chainId":              to_int(fields[0]),
         "nonce":                to_int(fields[1]),
@@ -100,7 +77,6 @@ def decode_type2_tx(raw_hex: str) -> dict:
 
 
 def format_tx(tx: dict) -> str:
-    """Format transaction as a string."""
     prio = tx["maxPriorityFeePerGas"]
     fee  = tx["maxFeePerGas"]
     glim = tx["gasLimit"]
@@ -139,12 +115,10 @@ def format_tx(tx: dict) -> str:
 
 
 def print_tx(tx: dict):
-    """Print transaction to console."""
     print(format_tx(tx))
 
 
 def write_tx_to_file(tx: dict, filepath: str):
-    """Write transaction output to a file."""
     with open(filepath, "w") as f:
         f.write(format_tx(tx) + "\n")
     print(f"Output written to {filepath}")
