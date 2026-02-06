@@ -18,3 +18,16 @@ uv run decode.py
 ## Output
 
 Displays chain ID, nonce, gas parameters, recipient, value, calldata info, and signature.
+
+## Check onchain nonce
+
+```bash
+curl -X POST https://eth.llamarpc.com \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "eth_getTransactionCount",
+    "params": ["0x45B6f7ACF369825aC5adaDE43437790834791e72", "latest"]
+  }'
+```
